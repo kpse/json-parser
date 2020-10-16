@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Applicative
-import Data.Char (isDigit)
+import Data.Char (isSpace, isDigit)
 data JsonValue = JsonNull
                 | JsonBool Bool
                 | JsonNumber Integer
@@ -39,9 +39,18 @@ notEmpty (Parser p) = Parser $ \i -> do
         _ -> Just (i2, rest)
 
 
-
 jsonArray :: Parser JsonValue
-jsonArray = undefined
+jsonArray = JsonArray <$> (charP '[' *> ws *> ele <* ws <* charP ']')
+    where ele = sepBy (ws *> charP ',' <* ws) jsonValue
+
+sepBy :: Parser Char -> Parser JsonValue -> Parser [JsonValue]
+sepBy s cur = (:) <$> cur <*> many (s *> cur ) <|> pure []
+
+ws :: Parser String
+ws = spanP isSpace
+
+jsonObject :: Parser JsonValue
+jsonObject = undefined
 
 spanP :: (Char -> Bool) -> Parser String
 spanP f = Parser $ \input -> let (m, rest) = span f input in Just (rest, m) 
@@ -78,7 +87,7 @@ instance Alternative Parser where
     (Parser a1) <|> (Parser a2) = Parser $ \i -> a1 i <|> a2 i
 
 jsonValue :: Parser JsonValue
-jsonValue = jsonNull <|> jsonBool <|> jsonNumber <|> jsonString
+jsonValue = jsonNull <|> jsonBool <|> jsonNumber <|> jsonString <|> jsonArray
 
 
 main :: IO ()
@@ -92,3 +101,5 @@ main = do
   print $ runParser jsonValue "\"trueab\"c"
   print $ runParser jsonValue "123p"
   print $ runParser jsonNumber "p"
+  print $ runParser jsonArray "[]"
+  print $ runParser jsonValue "[2, true, false, []]"
