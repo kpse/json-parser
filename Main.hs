@@ -1,10 +1,11 @@
 module Main where
 
 import Control.Applicative
+import Data.Char (isDigit)
 data JsonValue = JsonNull
                 | JsonBool Bool
                 | JsonNumber Integer
-                | JSonString String
+                | JsonString String
                 | JsonArray [JsonValue]
                 | JsonObject [(String, JsonValue)]
                 deriving (Show, Eq)
@@ -18,11 +19,20 @@ jsonNull = const JsonNull <$> stringP "null"
 
 jsonBool :: Parser JsonValue
 jsonBool = f <$> (stringP "true" <|> stringP "false")
-    where f b = case b of 
-                    "true" -> JsonBool True
-                    "false" -> JsonBool False
-                    _ -> undefined
-    
+    where f "true" = JsonBool True
+          f "false" = JsonBool False
+          f _ = undefined
+
+jsonString :: Parser JsonValue
+jsonString = charP '"' *> f <* charP '"'
+    where f = JsonString <$> spanP (/= '"')
+
+jsonNumber :: Parser JsonValue    
+jsonNumber = f <$> spanP isDigit
+    where f = JsonNumber . read
+
+spanP :: (Char -> Bool) -> Parser String
+spanP f = Parser $ \input -> let (m, rest) = span f input in Just (rest, m) 
 
 charP :: Char -> Parser Char
 charP x = Parser f
@@ -34,6 +44,7 @@ charP x = Parser f
 
 stringP :: String -> Parser String
 stringP = traverse charP
+
 
 instance Functor Parser where
   fmap f (Parser p) = Parser g
@@ -55,8 +66,8 @@ instance Alternative Parser where
     (Parser a1) <|> (Parser a2) = Parser $ \i -> a1 i <|> a2 i
 
 jsonValue :: Parser JsonValue
-jsonValue = jsonNull <|> jsonBool
-                                                    
+jsonValue = jsonNull <|> jsonBool <|> jsonNumber <|> jsonString
+
 
 main :: IO ()
 main = do
@@ -66,4 +77,5 @@ main = do
   print $ runParser jsonValue "nullabc"
   print $ runParser (stringP "true") "trueabc"
   print $ runParser jsonValue "trueabc"
- 
+  print $ runParser jsonValue "\"trueab\"c"
+  print $ runParser jsonValue "123p"
