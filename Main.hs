@@ -28,8 +28,20 @@ jsonString = charP '"' *> f <* charP '"'
     where f = JsonString <$> spanP (/= '"')
 
 jsonNumber :: Parser JsonValue    
-jsonNumber = f <$> spanP isDigit
+jsonNumber = f <$> notEmpty (spanP isDigit)
     where f = JsonNumber . read
+
+notEmpty :: Parser String -> Parser String
+notEmpty (Parser p) = Parser $ \i -> do
+    (i2, rest) <- p i
+    case rest of 
+        [] -> Nothing
+        _ -> Just (i2, rest)
+
+
+
+jsonArray :: Parser JsonValue
+jsonArray = undefined
 
 spanP :: (Char -> Bool) -> Parser String
 spanP f = Parser $ \input -> let (m, rest) = span f input in Just (rest, m) 
@@ -79,3 +91,4 @@ main = do
   print $ runParser jsonValue "trueabc"
   print $ runParser jsonValue "\"trueab\"c"
   print $ runParser jsonValue "123p"
+  print $ runParser jsonNumber "p"
