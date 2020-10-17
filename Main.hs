@@ -1,7 +1,8 @@
 module Main where
 
-import Control.Applicative
+import Control.Applicative ( Alternative((<|>), empty, many) )
 import Data.Char (isSpace, isDigit)
+
 data JsonValue = JsonNull
                 | JsonBool Bool
                 | JsonNumber Double
